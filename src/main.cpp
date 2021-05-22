@@ -4,7 +4,7 @@
 #include <avr/sleep.h>
 
 constexpr int BUTTON = PIN_PA1;
-constexpr int LEFTER = PIN_PA6;
+constexpr int LEFTER = PIN_PA0;
 constexpr int RIGHTER = PIN_PA2;
 constexpr int HEATER = PIN_PA3;
 
@@ -13,10 +13,10 @@ constexpr int HEATING = 0x02;
 
 constexpr int S_ALL_OFF = 0x07;
 
-constexpr unsigned long debounceDelay = 50L;
-constexpr unsigned long debounceCycles = F_CPU / 1000L * debounceDelay;
-constexpr unsigned long longPressLength = 3000L;
-constexpr unsigned long sessionLength = 900000L;
+constexpr unsigned long debounceDelay = 50UL;
+constexpr unsigned long debounceCycles = F_CPU / 1000UL * debounceDelay;
+constexpr unsigned long longPressLength = 3000UL;
+constexpr unsigned long sessionLength = 900000UL;
 
 int state;
 unsigned long poweredOn;
@@ -122,16 +122,22 @@ void wakeUp() {
 }
 
 void goSleep() {
+  bool wakingUp = false;
   setState(S_ALL_OFF);
   saveState(state);
   delay(200);
   sleep_enable();
   attachInterrupt(digitalPinToInterrupt(BUTTON), wakeUp, CHANGE);
   sleep_cpu();
-  if (readKeyBlocking() != HIGH) {
-    sleep_enable();
-    attachInterrupt(digitalPinToInterrupt(BUTTON), wakeUp, CHANGE);
-    sleep_cpu();
+  while (!wakingUp) {
+    if (readKeyBlocking() != HIGH) {
+      sleep_enable();
+      attachInterrupt(digitalPinToInterrupt(BUTTON), wakeUp, CHANGE);
+      sleep_cpu();
+    }
+    else {
+      wakingUp = true;
+    }
   }
   setState(state);
   poweredOn = millis();
